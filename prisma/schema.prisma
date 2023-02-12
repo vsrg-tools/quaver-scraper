@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Map {
+  id                     Int     @id
+  mapset_id              Int?
+  md5                    String? @db.Text
+  alternative_md5        String? @db.Text
+  creator_id             Int?
+  creator_username       String? @db.Text
+  game_mode              Int?
+  ranked_status          Int?
+  artist                 String? @db.Text
+  title                  String? @db.Text
+  source                 String? @db.Text
+  tags                   String? @db.Text
+  description            String? @db.Text
+  difficulty_name        String? @db.Text
+  length                 Int?
+  bpm                    Float?
+  difficulty_rating      Float?
+  count_hitobject_normal Int?
+  count_hitobject_long   Int?
+  play_count             Int?
+  fail_count             Int?
+  mods_pending           Int?
+  mods_accepted          Int?
+  mods_denied            Int?
+  mods_ignored           Int?
+  online_offset          Int?
+  clan_ranked            Int?
+  Mapset                 Mapset? @relation(fields: [mapset_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Map_ibfk_1")
+
+  @@index([mapset_id], map: "mapset_id")
+}
+
+model Mapset {
+  id                         Int       @id
+  creator_id                 Int?
+  creator_username           String?   @db.VarChar(255)
+  creator_avatar_url         String?   @db.Text
+  artist                     String?   @db.VarChar(255)
+  title                      String?   @db.VarChar(255)
+  source                     String?   @db.Text
+  tags                       String?   @db.Text
+  description                String?   @db.Text
+  date_submitted             DateTime? @db.Date
+  date_last_updated          DateTime? @db.Date
+  ranking_queue_status       Int?
+  ranking_queue_last_updated DateTime? @db.Date
+  ranking_queue_vote_count   Int?
+  mapset_ranking_queue_id    Int?
+  Map                        Map[]
+
+  @@index([id, title, artist, creator_username])
+}

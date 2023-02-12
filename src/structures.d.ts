@@ -24,7 +24,7 @@ export interface QuaverMap {
   alternative_md5?: string;
   creator_id?: number;
   creator_username?: string;
-  game_mode?: string;
+  game_mode?: number;
   ranked_status?: number;
   artist?: string;
   title?: string;

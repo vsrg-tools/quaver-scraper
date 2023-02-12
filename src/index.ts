@@ -5,11 +5,13 @@ import {
   ListObjectsCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
-import DatabaseManager from "./db/database";
 import axios from "axios";
 import { existsSync, writeFileSync, mkdirSync } from "fs";
 import { createInterface, Interface } from "readline/promises";
 import { stdin as input, stdout as output } from "process";
+
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
 import type { QuaverMapset } from "./structures";
 
@@ -32,7 +34,6 @@ class QuaverScraper {
   upload: boolean;
   redownload: boolean;
 
-  database: DatabaseManager;
   rl: Interface;
 
   mapset_ids: number[];
@@ -50,7 +51,6 @@ class QuaverScraper {
     this.redownload = redownload;
 
     this.rl = createInterface({ input, output });
-    this.database = new DatabaseManager();
     this.s3 = new S3Client({ region: "us-east-1" });
     this.bucket = process.env.BUCKET_NAME;
   }
@@ -195,7 +195,9 @@ class QuaverScraper {
   private async sync_db() {
     console.log("Syncing database...");
 
-    const existing = await this.database.existing_mapsets();
+    const existing = await (
+      await prisma.mapset.findMany({ select: { id: true } })
+    ).map((i) => i.id);
     const count = this.mapset_ids.length;
 
     for (const [i, id] of this.mapset_ids.entries()) {
@@ -204,20 +206,25 @@ class QuaverScraper {
       }
 
       console.log(`Syncing mapset ${id} to database... (${i + 1}/${count})`);
-
       try {
         const resp = await axios.get(
           `https://api.quavergame.com/v1/mapsets/${id}`
         );
 
-        const mapset = resp.data.mapset as QuaverMapset;
+        const { maps, ...mapset } = resp.data.mapset as QuaverMapset;
 
-        for (const map of mapset.maps) {
-          await this.database.upsert_map(map);
-        }
+        await prisma.mapset.upsert({
+          where: { id: mapset.id },
+          update: mapset,
+          create: mapset,
+        });
 
-        await this.database.upsert_mapset(mapset);
+        await prisma.map.createMany({
+          data: maps,
+          skipDuplicates: true,
+        });
       } catch (err) {
+        console.log(err);
         console.log(`Unable to sync mapset ${id}`);
       }
     }
